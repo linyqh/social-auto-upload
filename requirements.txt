@@ -12,3 +12,4 @@ fastapi
 uvicorn
 minio
 redis
+python-dotenv

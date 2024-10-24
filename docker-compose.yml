@@ -11,7 +11,7 @@ services:
 #      - ./cookies:/app/cookies
 #      - ./data:/app/data
       - ./:/app/
-    environment:
-      - TZ=Asia/Shanghai
+    env_file:
+      - .env
 #    command: sleep 24h
     command: sh /app/docker-entrypoint.sh

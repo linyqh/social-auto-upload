@@ -170,3 +170,4 @@ tk_uploader/*.json
 cookies
 .config
 .pki
+.env

@@ -1,22 +1,36 @@
 import requests
+from requests.auth import HTTPBasicAuth
 import json
 from minio import Minio
 from minio.error import S3Error
 from datetime import datetime
 import os
+# from dotenv import load_dotenv
+
+# # 加载 .env 文件
+# load_dotenv()
+
+# 从环境变量获取配置
+base_url = os.getenv('API_BASE_URL')
+username = os.getenv('API_USERNAME')
+password = os.getenv('API_PASSWORD')
+
+# 创建一个会话对象,用于所有请求
+session = requests.Session()
+session.auth = HTTPBasicAuth(username, password)
 
 
 def upload_to_minio():
     # MinIO 客户端配置
     minio_client = Minio(
-        "121.43.145.233:31005",
-        access_key="linyq",
-        secret_key="lingyinqvan456",
+        os.getenv('MINIO_ENDPOINT'),
+        access_key=os.getenv('MINIO_ACCESS_KEY'),
+        secret_key=os.getenv('MINIO_SECRET_KEY'),
         secure=False  # 使用 HTTP
     )
 
     # 准备上传参数
-    bucket_name = "bad"
+    bucket_name = os.getenv('MINIO_BUCKET_NAME')
     current_time = datetime.now().strftime("%Y-%m-%d@%H:%M:%S")
     object_name = f"auto_img/{current_time}/douyin_login_qr.png"
     file_path = "cookies/douyin_login_qr.png"
@@ -27,7 +41,7 @@ def upload_to_minio():
         print(f"文件 '{file_path}' 已成功上传到 '{bucket_name}/{object_name}'")
 
         # 生成 URL
-        url = f"http://121.43.145.233:31005/bad/{object_name}"
+        url = f"http://{os.getenv('MINIO_ENDPOINT')}/{bucket_name}/{object_name}"
         return url
     except S3Error as e:
         print(f"上传失败: {e}")
@@ -35,17 +49,16 @@ def upload_to_minio():
 
 
 def get_earliest_receiver():
-    url = 'http://121.43.145.233:31007/get_receivers'
+    url = f'{base_url}/get_receivers'
     headers = {
         'accept': 'application/json'
     }
 
     try:
-        response = requests.get(url, headers=headers)
+        response = session.get(url, headers=headers)
         if response.status_code == 200:
             receivers = response.json()
             if receivers:
-                # 找出时间戳最早的接收者
                 earliest_receiver = min(receivers.items(), key=lambda x: x[1])
                 return earliest_receiver[0]  # 返回 user_id
             else:
@@ -61,7 +74,7 @@ def get_earliest_receiver():
 
 
 def send_message(send_message: str):
-    send_text_url = 'http://121.43.145.233:31007/send_text_message'
+    send_text_url = f'{base_url}/send_text_message'
     headers = {
         'accept': 'application/json',
         'Content-Type': 'application/json'
@@ -78,7 +91,7 @@ def send_message(send_message: str):
     }
 
     try:
-        response = requests.post(send_text_url, headers=headers, json=send_message)
+        response = session.post(send_text_url, headers=headers, json=send_message)
         if response.status_code == 200:
             print("消息发送成功")
             print(response.json())
@@ -89,10 +102,9 @@ def send_message(send_message: str):
         print(f"发送消息时发生错误: {str(e)}")
 
 
-
 def send_image_url(image_url: str):
-    url = 'http://121.43.145.233:31007/send_image_url'
-    send_text_url = 'http://121.43.145.233:31007/send_text_message'
+    url = f'{base_url}/send_image_url'
+    send_text_url = f'{base_url}/send_text_message'
     headers = {
         'accept': 'application/json',
         'Content-Type': 'application/json'
@@ -110,14 +122,14 @@ def send_image_url(image_url: str):
 
     send_message = {
         "user_id": user_id,
-        "message": "抖音平台 cookies 已过期;请重新扫码���录!"
+        "message": "抖音平台 cookies 已过期;请重新扫码登录!"
     }
 
     print(data)
 
     try:
-        requests.post(send_text_url, headers=headers, json=send_message)
-        response = requests.post(url, headers=headers, json=data)
+        session.post(send_text_url, headers=headers, json=send_message)
+        response = session.post(url, headers=headers, json=data)
         if response.status_code == 200:
             print("图片消息发送成功")
             print(response.json())
@@ -129,7 +141,7 @@ def send_image_url(image_url: str):
 
 
 def run_workflow(api_key: str):
-    url = 'https://api.dify.ai/v1/workflows/run'
+    url = os.getenv('DIFY_API_URL')
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json'
@@ -143,7 +155,7 @@ def run_workflow(api_key: str):
         return
 
     # 发送图片消息
-    send_image_message(image_url)
+    send_image_url(image_url)
 
     data = {
         "inputs": {"query": f"img_url:{image_url}"},
@@ -168,7 +180,7 @@ def run_workflow(api_key: str):
 
 
 def send_image_file(file_path: str):
-    url = 'http://121.43.145.233:31007/send_image_file'
+    url = f'{base_url}/send_image_file'
     headers = {
         'accept': 'application/json'
     }
@@ -182,7 +194,7 @@ def send_image_file(file_path: str):
         with open(file_path, 'rb') as file:
             files = {'file': (os.path.basename(file_path), file, 'image/png')}
             params = {'user_id': user_id}
-            response = requests.post(url, headers=headers, params=params, files=files)
+            response = session.post(url, headers=headers, params=params, files=files)
 
         if response.status_code == 200:
             print("图片文件发送成功")
