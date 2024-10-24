@@ -9,10 +9,10 @@ import asyncio
 import uvicorn
 import tempfile
 import os
-from dotenv import load_dotenv
-
-# 加载环境变量
-load_dotenv()
+# from dotenv import load_dotenv
+#
+# # 加载环境变量
+# load_dotenv()
 
 # 获取用户名和密码
 API_USERNAME = os.getenv("API_USERNAME")
